@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using DocsAgent.Agents;
+using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 
@@ -11,10 +12,27 @@ Console.InputEncoding = Encoding.UTF8;
 string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
 string modelName = Environment.GetEnvironmentVariable("OLLAMA_MODEL_NAME") ?? "llama3.2";
 
-AIAgent agent = LocalAgentFactory.Create(
-    endpoint,
-    modelName,
-    "You are a helpful assistant. Answer clearly and briefly.");
+string docsFolder = Environment.GetEnvironmentVariable("DOCS_FOLDER")
+    ?? @"F:\CSharpProjects\Docs Agent\DocsAgent\Docs";
+
+var docsTools = new DocsTools(docsFolder);
+
+IList<AITool> tools = new List<AITool>
+{
+    AIFunctionFactory.Create(docsTools.ListDocs),
+    AIFunctionFactory.Create(docsTools.ReadDoc)
+};
+
+// Inject the real file names so the small model never has to guess them.
+string fileList = docsTools.ListDocs().Replace("\n", ", ");
+Console.WriteLine($"{Tag} Available docs at startup: {fileList}");
+
+string Instructions =
+    "You answer questions using the user's documents. " +
+    $"The ONLY available files are: {fileList}. " +
+    "Never invent file names. Call ReadDoc with one of these exact names. " +
+    "Answer only from the document text. If the answer is not in the documents, say you could not find it.";
+AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, Instructions, tools);
 
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();
