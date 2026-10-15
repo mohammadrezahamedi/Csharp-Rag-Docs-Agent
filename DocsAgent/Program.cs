@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using DocsAgent.Agents;
+using DocsAgent.Prompts;
 using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -12,8 +13,12 @@ Console.InputEncoding = Encoding.UTF8;
 string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
 string modelName = Environment.GetEnvironmentVariable("OLLAMA_MODEL_NAME") ?? "llama3.2";
 
+// Read the docs folder directly from the project folder (no copy step needed).
+// Optional override: set the DOCS_FOLDER environment variable.
 string docsFolder = Environment.GetEnvironmentVariable("DOCS_FOLDER")
     ?? @"F:\CSharpProjects\Docs Agent\DocsAgent\Docs";
+
+Console.WriteLine($"{Tag} Docs folder = {docsFolder}, exists = {Directory.Exists(docsFolder)}");
 
 var docsTools = new DocsTools(docsFolder);
 
@@ -27,12 +32,9 @@ IList<AITool> tools = new List<AITool>
 string fileList = docsTools.ListDocs().Replace("\n", ", ");
 Console.WriteLine($"{Tag} Available docs at startup: {fileList}");
 
-string Instructions =
-    "You answer questions using the user's documents. " +
-    $"The ONLY available files are: {fileList}. " +
-    "Never invent file names. Call ReadDoc with one of these exact names. " +
-    "Answer only from the document text. If the answer is not in the documents, say you could not find it.";
-AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, Instructions, tools);
+string instructions = AgentPrompts.BuildDocsAssistant(fileList);
+
+AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, instructions, tools);
 
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();
