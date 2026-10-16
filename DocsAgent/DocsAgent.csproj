@@ -30,6 +30,7 @@
     <ProjectReference Include="src\Memory\Memory.csproj" />
     <ProjectReference Include="src\Structured\Structured.csproj" />
     <ProjectReference Include="..\Vision\Vision.csproj" />
+    <ProjectReference Include="..\ImageGen\ImageGen.csproj" />
  
   </ItemGroup>
 

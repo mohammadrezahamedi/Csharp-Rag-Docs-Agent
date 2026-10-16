@@ -71,3 +71,5 @@ x86/
 *.[Pp]ublish.xml
 My Notes.docx
 ~$ Notes.docx
+
+.env.local

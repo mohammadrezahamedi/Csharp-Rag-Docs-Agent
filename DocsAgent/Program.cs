@@ -12,6 +12,7 @@ using OllamaSharp;
 using Planner;
 using Structured;
 using DocsAgent.Vision;
+using ImageGen;
 
 const string Tag = "[DocsAgent/Chat]";
 
@@ -87,7 +88,28 @@ while (true)
     }
 
     string command = input.Trim().ToLowerInvariant();
+    if (command.StartsWith("/generate "))
+    {
+        // Provider is chosen by IMAGE_PROVIDER; created lazily so missing variables do not break startup.
+        try
+        {
+            IImageCreator creator = ImageCreatorFactory.Create();
+            string outPath = Path.Combine(AppContext.BaseDirectory, "generated", $"img_{DateTime.Now:HHmmss}.png");
+            string saved = await creator.CreateAsync(input.Substring(10).Trim(), outPath);
 
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Image saved: {saved}");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} IMAGE ERROR: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        continue;
+    }
     if (command == "/exit")
     {
         Console.WriteLine($"{Tag} Bye.");
