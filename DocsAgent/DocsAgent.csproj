@@ -29,7 +29,12 @@
     <ProjectReference Include="src\Evals\Evals.csproj" />
     <ProjectReference Include="src\Memory\Memory.csproj" />
     <ProjectReference Include="src\Structured\Structured.csproj" />
+    <ProjectReference Include="..\Vision\Vision.csproj" />
  
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Samples\" />
   </ItemGroup>
 
 </Project>

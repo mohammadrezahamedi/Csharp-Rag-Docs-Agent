@@ -11,6 +11,7 @@ using Microsoft.Extensions.AI;
 using OllamaSharp;
 using Planner;
 using Structured;
+using DocsAgent.Vision;
 
 const string Tag = "[DocsAgent/Chat]";
 
@@ -60,6 +61,7 @@ IChatMemory memory = new SummaryMemory(chatClient, 6, 2);
 
 Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /memory on|off, /clear (reset memory), /exit (quit)");
 IPlanGenerator planGenerator = new PlanGenerator(chatClient, toolNames, 5, 3);
+IImageDescriber imageDescriber = new ImageDescriber(ChatClientFactory.CreateVision());
 IAgentRunner agentRunner = new AgentRunnerAdapter(agent);
 
 // Final-answer agent has NO tools, so "Do not call tools" is actually enforced.
@@ -91,7 +93,28 @@ while (true)
         Console.WriteLine($"{Tag} Bye.");
         break;
     }
+    if (command.StartsWith("/vision "))
+    {
+        // Format: /vision <image path> | <question>  (the | separator allows spaces in the path)
+        string[] parts = input.Substring(8).Split('|', 2);
+        string imagePath = parts[0].Trim().Trim('"');
+        string question = parts.Length > 1 && !string.IsNullOrWhiteSpace(parts[1])
+            ? parts[1].Trim()
+            : "Describe this image.";
 
+        try
+        {
+            await VisionDemo.RunAsync(imageDescriber, imagePath, question);
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} VISION ERROR: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        continue;
+    }
     if (command == "/clear")
     {
         memory.Clear();

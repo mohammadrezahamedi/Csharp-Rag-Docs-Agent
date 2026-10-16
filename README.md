@@ -129,3 +129,27 @@ Notes:
 - Built with the official `ModelContextProtocol` C# SDK.
 - stdout is reserved for the protocol, so all logs go to stderr.
 - `McpTicketTools` is a thin adapter over the existing `TicketTools`, so there is no duplicated logic.
+
+
+## Vision (multimodal)
+`/vision <image path> | <question>` sends an image plus a question to a local vision model (`qwen3-vl:8b` via Ollama) and prints the answer.
+- `IImageDescriber` / `ImageDescriber` in `Vision/`, built on `Microsoft.Extensions.AI` (`DataContent` + `TextContent`).
+- Separate env var `OLLAMA_VISION_MODEL_NAME`, so text-model projects are untouched.
+- Example: `/vision samples\test.png | What text do you see in this image?`
+
+
+
+
+/search <text>
+/eval
+/tools-eval
+/extract-eval
+/plan <text>
+/plan-eval
+/vision <image path> | <question>
+/memory on
+/memory off
+/memory summary
+/clear
+/retry-test
+/exit

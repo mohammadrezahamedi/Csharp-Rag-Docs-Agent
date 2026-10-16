@@ -22,7 +22,28 @@ public static class ChatClientFactory
             _ => throw new InvalidOperationException($"Unknown LLM_PROVIDER '{provider}'. Use 'ollama' or 'azure'.")
         };
     }
+    // Vision client: same provider switch, but Ollama uses its own vision model name.
+    public static IChatClient CreateVision()
+    {
+        string provider = (Environment.GetEnvironmentVariable("LLM_PROVIDER") ?? "ollama").Trim().ToLowerInvariant();
+        Console.WriteLine($"{Tag} Vision provider = {provider}");
 
+        return provider switch
+        {
+            "azure" => CreateAzure(), // deployment must be a vision-capable model
+            "ollama" => CreateOllamaVision(),
+            _ => throw new InvalidOperationException($"Unknown LLM_PROVIDER '{provider}'. Use 'ollama' or 'azure'.")
+        };
+    }
+
+    private static IChatClient CreateOllamaVision()
+    {
+        string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
+        string model = Environment.GetEnvironmentVariable("OLLAMA_VISION_MODEL_NAME") ?? "qwen3-vl:8b";
+        Console.WriteLine($"{Tag} Ollama vision. Endpoint={endpoint}, Model={model}");
+
+        return new OllamaApiClient(new Uri(endpoint), model);
+    }
     private static IChatClient CreateOllama()
     {
         string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
