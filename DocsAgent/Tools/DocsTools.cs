@@ -2,12 +2,15 @@
 
 namespace DocsAgent.Tools;
 
-public class DocsTools
+public class DocsTools : IToolCallSource
 {
     private const string Tag = "[Tools/Docs]";
     private const int MaxChars = 8000;
 
     private readonly string _rootFolder;
+
+    // Raised every time the model calls one of the tools (used by the eval runner).
+    public event Action<string>? ToolCalled;
 
     public DocsTools(string rootFolder)
     {
@@ -19,6 +22,7 @@ public class DocsTools
     public string ListDocs()
     {
         Console.WriteLine($"{Tag} ListDocs called");
+        ToolCalled?.Invoke("ListDocs");
 
         if (!Directory.Exists(_rootFolder))
         {
@@ -35,6 +39,7 @@ public class DocsTools
     public string ReadDoc([Description("File name only, without any folder path.")] string fileName)
     {
         Console.WriteLine($"{Tag} ReadDoc called with fileName='{fileName}'");
+        ToolCalled?.Invoke("ReadDoc");
 
         // Security: keep only the file name so the model can never leave the docs folder.
         string safeName = Path.GetFileName(fileName ?? string.Empty);

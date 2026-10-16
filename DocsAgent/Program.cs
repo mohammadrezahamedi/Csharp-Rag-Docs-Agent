@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using DocsAgent.Agents;
+using DocsAgent.Evals;
 using DocsAgent.Prompts;
 using DocsAgent.Tools;
 using Microsoft.Agents.AI;
@@ -39,7 +40,7 @@ AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, instructions, tool
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();
 
-Console.WriteLine($"{Tag} Ready. Commands: /clear (reset memory), /exit (quit)");
+Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /clear (reset memory), /exit (quit)");
 
 while (true)
 {
@@ -63,6 +64,13 @@ while (true)
     {
         history.Clear();
         Console.WriteLine($"{Tag} Memory cleared.");
+        continue;
+    }
+
+    if (command == "/eval")
+    {
+        var runner = new EvalRunner(agent, docsTools);
+        await runner.RunAsync(EvalSuite.Default());
         continue;
     }
 
