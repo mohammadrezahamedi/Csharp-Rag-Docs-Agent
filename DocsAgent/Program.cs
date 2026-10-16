@@ -9,6 +9,7 @@ using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
+using Structured;
 
 const string Tag = "[DocsAgent/Chat]";
 
@@ -96,6 +97,19 @@ while (true)
         Console.WriteLine($"{Tag} Memory is SUMMARY (old messages get summarized). History starts empty.");
         continue;
     }
+    if (command == "/extract-eval")
+    {
+        Console.WriteLine($"{Tag} Running structured eval");
+        IStructuredExtractor<TicketInfo> extractor = new TicketExtractor(chatClient);
+        await new TicketEvalRunner(extractor).RunAsync(TicketEvalCases.All);
+        continue;
+    }
+    if (command == "/retry-test")
+    {
+        Console.WriteLine($"{Tag} Running retry-path test");
+        await RetryPathTest.RunAsync();
+        continue;
+    }
     if (command == "/eval")
     {
         var runner = new EvalRunner(new AgentRunnerAdapter(agent), new IToolCallSource[] { docsTools, ragTools });
@@ -148,4 +162,20 @@ while (true)
         Console.WriteLine($"{Tag} Is Ollama running and is the model pulled?");
         Console.ResetColor();
     }
+    static async Task RunExtractDemoAsync(Microsoft.Extensions.AI.IChatClient client)
+    {
+        IStructuredExtractor<TicketInfo> extractor = new Structured.TicketExtractor(client);
+
+        var text = "Hi, I was charged twice for my Pro plan this month and the app also crashes on login. " +
+                   "Please fix this today and refund the extra charge!";
+
+        var result = await extractor.ExtractAsync(text);
+
+        Console.WriteLine($"[Demo] Success={result.Success} Attempts={result.Attempts}");
+        if (result.Success)
+            Console.WriteLine($"[Demo] {result.Value}");
+        else
+            Console.WriteLine($"[Demo] Error: {result.LastError}");
+    }
+
 }

@@ -12,3 +12,5 @@ public sealed record EvalCase(
     EvalKind Kind,
     string Question,
     string[]? MustContainAll = null);
+
+
