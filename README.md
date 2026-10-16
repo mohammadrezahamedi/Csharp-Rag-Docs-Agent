@@ -1,145 +1,22 @@
-# DocsAgent
-
-I built this to learn how the pieces of an AI app fit together in C#, without using a big framework to hide them. It's a console agent that answers questions about a folder of documents, plus a small ASP.NET Core API on top of it.
-
-It runs locally on Ollama (llama3.2 for chat, nomic-embed-text for embeddings), so it costs nothing to run. Setting `LLM_PROVIDER=azure` switches the chat model to Azure OpenAI without code changes.
-
-## What's in it
-
-- **RAG.** The docs are split into overlapping chunks, embedded, and searched by meaning. Matches scoring below 0.55 are thrown away, and if nothing is left the agent says it doesn't know instead of guessing.
-- **Tools.** The agent can call `ListDocs`, `SearchDocs`, `GetTicketStatus` and `CalculateRefund`. A tool that fails returns an error message to the model instead of throwing. I also capped each question at 3 model/tool round trips so it can't loop forever.
-- **Structured output.** A `TicketExtractor` turns free text into a typed `TicketInfo`. If the JSON is invalid, the validation error goes back to the model and it tries again, up to 3 times. After that it fails cleanly.
-- **Memory.** Three options: none, a sliding window of the last 20 messages, and a summary memory that compresses old messages.
-- **Planner.** The model writes a JSON plan with at most 5 steps. I validate it (unknown tools are rejected, steps are renumbered) and retry if it's bad. Each step runs through the agent with the earlier results as context. The final answer comes from a second agent that has no tools at all, so it can't call one even if it wants to.
-- **Evals.** Separate runners for RAG, tool choice, extraction and the planner. There's also a fake chat client I used to prove the retry path without needing a real model to misbehave on cue.
-- **API.** `POST /ask`, `POST /plan` and `GET /health`, with rate limiting, a basic input guard, a response cache and latency logging.
-
-```
-Docs/*.txt -> chunk -> embed -> vector store            (once, at startup)
-question -> embed -> top 3 chunks -> drop < 0.55 -> chat model -> answer
-```
-
-The sample documents are for a made-up company called FileNest (refunds, support hours, FAQ, past tickets). They're synthetic and written only for testing.
-
-## Layout
-
-```
-DocsAgent/        console app: chat loop, eval commands, wiring
-DocsAgent.Api/    minimal API
-Planner/          plan generation, validation, execution
-src/Shared        interfaces (IAgentRunner, IToolCallSource, ...)
-src/Rag           chunker, vector store, indexer, SearchDocs
-src/Tools         docs tools and ticket tools
-src/Memory        none / sliding window / summary
-src/Structured    typed extraction with retry
-src/Evals         eval cases and runner
-```
-
-Modules talk through interfaces and every module logs with a tag like `[Tools/Rag]` or `[Planner/Run]`. I wanted to be able to debug a run from the console output alone.
-
-## Running the console app
-
-You need the .NET SDK and Ollama.
-
-```bash
+DocsAgent
+A C# / .NET 9 AI-engineering portfolio: one console agent plus ten focused projects (memory, structured output, tool calling, RAG, evals, planner, multimodal, REST API, guardrails, MCP). It runs locally on Ollama and has an Azure OpenAI path for stronger models.
+What is inside
+#ProjectWhereWhat it shows1MemoryDocsAgent/src/MemorySliding-window memory and summary memory behind one interface2Structured outputDocsAgent/src/StructuredTyped ticket extraction with validation and retry3Tool callingDocsAgent/src/ToolsTicket status, refund calculator, document listing4RAGDocsAgent/src/RagChunking, embeddings (nomic-embed-text), in-memory vector store, score threshold and top-K5EvalsDocsAgent/src/EvalsEval runners and suites for answers and tool calls6PlannerPlannerPlan generation, step execution, final-answer agent without tools7MultimodalVisionImage + question sent to a local vision model8REST APIDocsAgent.ApiMinimal API on top of the agent9GuardrailsDocsAgent.ApiImplemented inside the API project10MCP serverDocsAgent.Mcpstdio MCP server exposing the ticket tools+Image generationImageGenText-to-image, seeded tweaks, remix and edit behind provider-agnostic interfacesDesign notes
+* Every module is a small class behind an interface; Program.cs only wires them together.
+* Providers are chosen by factories and environment variables (ChatClientFactory, ImageCreatorFactory), so the same code runs on Ollama or Azure OpenAI.
+* Logs carry a module tag such as [Rag/Indexer] or [Vision/Describer]. Model answers print in green, code logs stay in the default color.
+* Built on Microsoft.Extensions.AI, Microsoft.Agents.AI, OllamaSharp, ModelContextProtocol and Azure.AI.OpenAI.
+Quick start
+Requirements: .NET 9 SDK and Ollama.
 ollama pull llama3.2
 ollama pull nomic-embed-text
-dotnet run --project DocsAgent
-```
-
-Commands inside the app:
-
-```
-(any question)           full agent
-/plan <question>         multi-step planner
-/search <text>           retrieval only, shows top 3 chunks and scores
-/eval                    RAG tests
-/tools-eval              tool-choice tests
-/extract-eval            structured extraction eval
-/retry-test              retry path with a fake chat client
-/plan-eval               planner eval
-/memory on|off|summary   switch memory type
-/clear                   reset memory
-/exit                    quit
-```
-
-## Running the API
-
-Start Ollama, set `DOCS_FOLDER` to the full path of the `Docs` folder (it's in `Properties/launchSettings.json`), and run `DocsAgent.Api`.
-
-```bash
-curl -X POST http://localhost:5201/ask \
-  -H "Content-Type: application/json" \
-  -d '{"question":"What is the status of ticket T-1002?"}'
-```
-
-- `/ask` has a 5 minute in-memory cache. A repeated question comes back in about 0 ms instead of a few seconds.
-- Rate limit is 5 requests per 30 seconds per IP, using the built-in ASP.NET limiter.
-- The input guard caps questions at 500 characters and blocks a short list of phrases like "ignore previous instructions". It's a first layer, not a real prompt-injection defense.
-
-Other environment variables: `OLLAMA_ENDPOINT`, `OLLAMA_MODEL_NAME`, `LLM_PROVIDER`, and for Azure `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_DEPLOYMENT`.
-
-## Eval results
-
-`/eval` has 10 cases: 7 answerable (the model must search and include the right facts), 2 unanswerable (it must admit the answer isn't in the docs) and 1 greeting (it must not search).
-
-| Setup | Model | Score |
-|---|---|---|
-| Whole-file reading (`ReadDoc`) | llama3.2 | 5/10 |
-| RAG, threshold 0.50 | llama3.2 | 8/10 |
-| RAG, threshold 0.55 | llama3.2 | 9/10 |
-| RAG | stronger model | TODO |
-
-The first version let the model pick a file from a list. It guessed wrong for some questions and then answered confidently from the wrong file. Searching by meaning fixed all the answerable cases.
-
-I tuned the threshold on the same 10 cases, so 9/10 is optimistic. The one failure left is the greeting: llama3.2 calls the search tool for "hello" even though the prompt tells it not to. Retrieval did its job there and dropped every chunk.
-
-The other evals are noisier. Extraction with llama3.2 gave valid JSON 80% to 100% of the time and correct fields 60% to 73%, and the numbers moved between runs with identical code. For the planner, I only claim what I saw: it ran on multi-step questions, and the retry caught an invented tool name (`CompareDocs`) and produced a valid plan on the third attempt. The planner eval checks are loose keyword matches, so I'm not publishing a pass rate for it.
-
-## Limitations
-
-- llama3.2 ignores instructions fairly often. It calls tools for greetings, makes up ticket IDs, and sometimes sends a plan step to the wrong tool. The same question can produce different plans on different runs. I plan to rerun everything with a stronger model.
-- Chunking is character-based, so it can cut a word in half.
-- Only `.txt` files are supported. The vector store, the ticket store and the cache are all in memory.
-- The 0.55 threshold fits `nomic-embed-text` on this small corpus and would need re-tuning for other models or data.
-- The evals check that the needed facts appear in the answer. They don't judge how well the answer is written.
-- The API has no authentication.
-
-## Next
-
-- Run the evals with a stronger model and fill in the last row of the table.
-- Expose the tools through an MCP server.
-
-
-## MCP Server (DocsAgent.Mcp)
-
-Exposes the ticket tools over the Model Context Protocol (stdio), so any MCP client can call them.
-
-Tools:
-- `GetTicketStatus(ticketId)`: returns the status of a support ticket.
-- `CalculateRefund(plan, daysSincePurchase)`: returns the refund amount in USD.
-
-Run and test with MCP Inspector:
-
-```
-npx @modelcontextprotocol/inspector dotnet run --project DocsAgent.Mcp/DocsAgent.Mcp.csproj
-```
-
-Notes:
-- Built with the official `ModelContextProtocol` C# SDK.
-- stdout is reserved for the protocol, so all logs go to stderr.
-- `McpTicketTools` is a thin adapter over the existing `TicketTools`, so there is no duplicated logic.
-
-
-## Vision (multimodal)
-`/vision <image path> | <question>` sends an image plus a question to a local vision model (`qwen3-vl:8b` via Ollama) and prints the answer.
-- `IImageDescriber` / `ImageDescriber` in `Vision/`, built on `Microsoft.Extensions.AI` (`DataContent` + `TextContent`).
-- Separate env var `OLLAMA_VISION_MODEL_NAME`, so text-model projects are untouched.
-- Example: `/vision samples\test.png | What text do you see in this image?`
-
-
-
-
+ollama pull qwen3-vl:8b
+dotnet run --project DocsAgent/DocsAgent.csproj
+Stop any running instance of the app before building, otherwise the locked executable makes the build fail.
+Configuration
+VariableDefaultPurposeLLM_PROVIDERollamaollama or azureOLLAMA_ENDPOINThttp://localhost:11434Ollama serverOLLAMA_MODEL_NAMEllama3.2Chat modelOLLAMA_VISION_MODEL_NAMEqwen3-vl:8bVision modelDOCS_FOLDERauto-detectedFolder with the documents to indexAZURE_OPENAI_ENDPOINT, AZURE_OPENAI_KEY, AZURE_OPENAI_DEPLOYMENTnoneAzure chat modelIMAGE_PROVIDERazureazure or pollinationsAZURE_OPENAI_IMAGE_DEPLOYMENTnoneAzure image deploymentPOLLINATIONS_API_KEYnonePollinations keyPOLLINATIONS_MODELfluxText-to-image modelPOLLINATIONS_EDIT_MODELkontextImage-edit modelSecrets can live in a git-ignored .env.local at the repo root (see .env.example). Real environment variables always win over the file, and a missing file is fine.
+Console commands
+(any text)                 ask the agent (tools + RAG)
 /search <text>
 /eval
 /tools-eval
@@ -147,9 +24,50 @@ Notes:
 /plan <text>
 /plan-eval
 /vision <image path> | <question>
+/generate <prompt>
+/imagine <prompt>
+/tweak <change>
+/remix <image path> | <optional style>
+/edit <image path> | <what to change>
 /memory on
 /memory off
 /memory summary
 /clear
 /retry-test
 /exit
+MCP server
+DocsAgent.Mcp is a stdio MCP server (ModelContextProtocol 2.2.0) with two tools, GetTicketStatus and CalculateRefund. It is a thin adapter over the same TicketTools the agent uses. Stdout is reserved for JSON-RPC, so console output is redirected to stderr.
+Test it with the MCP Inspector (on Windows PowerShell use npx.cmd if script execution is restricted):
+npx @modelcontextprotocol/inspector dotnet run --project DocsAgent.Mcp/DocsAgent.Mcp.csproj
+Verified in the Inspector: tools/list works, GetTicketStatus for T-1001 returns open, and CalculateRefund for an annual plan after 30 days returns 50.0 USD.
+REST API
+DocsAgent.Api is a minimal API over the agent (http 5201, https 7289 in the launch profile).
+<!-- TODO: list the real endpoints from DocsAgent.Api/Program.cs and confirm /health in a browser before publishing --> 
+Vision
+/vision <image path> | <question> sends an image and a question to a local vision model (qwen3-vl:8b through Ollama) using DataContent + TextContent from Microsoft.Extensions.AI.
+/vision samples/invoice.png | What text do you see in this image?
+Image generation
+ImageGen keeps image providers behind interfaces (IImageCreator, ISeededImageCreator, IImageEditor).
+* /generate makes an image from text.
+* /imagine + /tweak make a base image, then re-render it with an extra change and the same seed. This is not pixel editing: composition usually stays similar, details change.
+* /remix lets the vision model describe an image, then generates a new one from that description.
+* /edit uploads a local image to the provider's media service, edits it with an image-edit model and deletes the upload afterwards.
+Status: /generate, /imagine, /tweak and /remix were run end to end with Pollinations. The Azure OpenAI image provider builds but has not been run against a real deployment. /edit is experimental.
+<!-- TODO: after testing /edit, either move it into the verified list or keep it marked experimental --> 
+Privacy: with the pollinations provider, prompts leave your machine. /edit also uploads the image (it gets a public link until deleted), so use it only with non-sensitive images.
+Results and known limitations
+Development used a small local model (llama3.2), which is fast and free but weak. These issues come from the model, not from the code, and were not worked around:
+* extra or irrelevant plan steps and the wrong tool chosen for a step
+* invented arguments or documents
+* answer prefixes such as "The final answer is:" and tool calls for plain greetings
+* vision answers that misread small details
+EvalStrong-model result/eval (RAG + agent)pending final run/tools-evalpending final run/plan-evalpending final run/extract-evalpending final run<!-- TODO: fill the table after running the evals once with a strong model (Azure OpenAI or similar) --> 
+Repository layout
+DocsAgent/            console app, Agents/, Prompts/, Docs/, src/ (Evals, Memory, Rag, Shared, Structured, Tools)
+DocsAgent.Api/        minimal API
+DocsAgent.Mcp/        MCP server (kept outside DocsAgent/ so its files are not compiled into the console app)
+Planner/              planner
+Vision/               image description
+ImageGen/             image generation, remix, edit
+samples/              small sample images
+
