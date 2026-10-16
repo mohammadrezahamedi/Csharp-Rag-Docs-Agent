@@ -128,7 +128,11 @@ while (true)
     {
         var planResult = await planner.RunAsync(input.Substring(6));
         Console.WriteLine($"{Tag} Success={planResult.Success}");
+
+        // Green = final model answer, red = error.
+        Console.ForegroundColor = planResult.Success ? ConsoleColor.Green : ConsoleColor.Red;
         Console.WriteLine(planResult.Success ? planResult.FinalAnswer : $"Error: {planResult.Error}");
+        Console.ResetColor();
         continue;
     }
     if (command == "/extract-eval")
