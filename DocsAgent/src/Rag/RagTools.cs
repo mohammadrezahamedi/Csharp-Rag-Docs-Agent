@@ -1,9 +1,8 @@
 using System.ComponentModel;
 using System.Text;
 using DocsAgent.Rag;
-
+using DocsAgent.Shared;
 namespace DocsAgent.Tools;
-
 public class RagTools : IToolCallSource
 {
     private const string Tag = "[Tools/Rag]";

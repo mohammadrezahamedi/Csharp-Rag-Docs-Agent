@@ -1,5 +1,7 @@
-namespace DocsAgent.Rag;
+// IVectorStore.cs, InMemoryVectorStore.cs
+using DocsAgent.Shared;
 
+namespace DocsAgent.Rag;
 // Splits text into overlapping pieces of roughly chunkSize characters.
 public sealed class TextChunker : ITextChunker
 {

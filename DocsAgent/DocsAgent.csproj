@@ -12,4 +12,22 @@
     <PackageReference Include="OllamaSharp" Version="5.5.0" />
   </ItemGroup>
 
+  <!-- Keep the nested src folder out of this project; it is built as its own project. -->
+  <ItemGroup>
+    <Compile Remove="src\**" />
+    <EmbeddedResource Remove="src\**" />
+    <None Remove="src\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="src\Shared\Shared.csproj" />
+    <ProjectReference Include="src\Rag\Rag.csproj" />
+    <ProjectReference Include="src\Tools\Tools.csproj" />
+    <ProjectReference Include="src\Evals\Evals.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Rag\" />
+  </ItemGroup>
+
 </Project>

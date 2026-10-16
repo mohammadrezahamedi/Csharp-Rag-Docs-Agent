@@ -1,8 +1,6 @@
-﻿using System.Diagnostics;
-using System.Text;
+﻿using DocsAgent.Shared;
 using DocsAgent.Tools;
-using Microsoft.Agents.AI;
-using Microsoft.Extensions.AI;
+using System.Diagnostics;
 
 namespace DocsAgent.Evals;
 
@@ -18,11 +16,11 @@ public sealed class EvalRunner
         "not in the document", "not specified", "no mention", "not provided"
     };
 
-    private readonly AIAgent _agent;
+    private readonly IAgentRunner _agent;
     private readonly IReadOnlyList<IToolCallSource> _toolSources;
     private readonly List<string> _currentCalls = new();
 
-    public EvalRunner(AIAgent agent, IReadOnlyList<IToolCallSource> toolSources)
+    public EvalRunner(IAgentRunner agent, IReadOnlyList<IToolCallSource> toolSources)
     {
         _agent = agent;
         _toolSources = toolSources;
@@ -86,17 +84,13 @@ public sealed class EvalRunner
         Console.WriteLine($"{Tag} --- Case '{evalCase.Id}' ({evalCase.Kind}) ---");
         Console.WriteLine($"{Tag} Question: {evalCase.Question}");
 
-        // Fresh history for every case, so cases never influence each other.
-        var history = new List<ChatMessage> { new ChatMessage(ChatRole.User, evalCase.Question) };
-        var answer = new StringBuilder();
+        string answerText;
         var stopwatch = Stopwatch.StartNew();
 
         try
         {
-            await foreach (var update in _agent.RunStreamingAsync(history))
-            {
-                answer.Append(update.ToString());
-            }
+            // Fresh history for every case is handled inside the runner implementation.
+            answerText = await _agent.AskAsync(evalCase.Question);
         }
         catch (Exception ex)
         {
@@ -107,7 +101,6 @@ public sealed class EvalRunner
 
         stopwatch.Stop();
 
-        string answerText = answer.ToString();
         Console.WriteLine($"{Tag} Answer: {answerText}");
         Console.WriteLine($"{Tag} Tool calls: [{string.Join(", ", _currentCalls)}], time = {stopwatch.ElapsedMilliseconds} ms");
 

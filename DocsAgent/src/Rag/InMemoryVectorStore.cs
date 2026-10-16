@@ -1,3 +1,5 @@
+using DocsAgent.Shared;
+
 namespace DocsAgent.Rag;
 
 // Simple in-memory store. Fine for small projects; swap it later by implementing IVectorStore.

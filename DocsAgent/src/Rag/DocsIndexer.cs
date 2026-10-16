@@ -1,3 +1,4 @@
+using DocsAgent.Shared;
 using Microsoft.Extensions.AI;
 
 namespace DocsAgent.Rag;

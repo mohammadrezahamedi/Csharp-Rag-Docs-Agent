@@ -77,7 +77,7 @@ while (true)
 
     if (command == "/eval")
     {
-        var runner = new EvalRunner(agent, new IToolCallSource[] { docsTools, ragTools });
+        var runner = new EvalRunner(new AgentRunnerAdapter(agent), new IToolCallSource[] { docsTools, ragTools });
         await runner.RunAsync(EvalSuite.Default());
         continue;
     }

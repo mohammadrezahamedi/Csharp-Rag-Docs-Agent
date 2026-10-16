@@ -1,4 +1,4 @@
-namespace DocsAgent.Rag;
+namespace DocsAgent.Shared;
 
 // One piece of a document, plus where it came from.
 public sealed record DocChunk(string Source, int Index, string Text);

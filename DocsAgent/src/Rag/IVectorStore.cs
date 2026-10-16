@@ -1,3 +1,5 @@
+using DocsAgent.Shared;
+
 namespace DocsAgent.Rag;
 
 public interface IVectorStore
