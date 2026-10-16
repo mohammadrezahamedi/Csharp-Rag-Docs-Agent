@@ -26,8 +26,4 @@
     <ProjectReference Include="src\Evals\Evals.csproj" />
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="Rag\" />
-  </ItemGroup>
-
 </Project>
