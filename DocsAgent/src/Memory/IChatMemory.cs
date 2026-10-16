@@ -10,4 +10,9 @@ public interface IChatMemory
     void RemoveLast();
     IReadOnlyList<ChatMessage> GetHistory();
     void Clear();
+
+    public Task CompactAsync()
+    {
+        return Task.CompletedTask;
+    }
 }

@@ -48,8 +48,7 @@ string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 IChatClient chatClient = ChatClientFactory.Create();
 AIAgent agent = LocalAgentFactory.Create(chatClient, instructions, tools);
 
-// Conversation memory: starts ON with a sliding window of the last 20 messages.
-IChatMemory memory = new SlidingWindowMemory(20);
+IChatMemory memory = new SummaryMemory(chatClient, 6, 2);
 
 Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /memory on|off, /clear (reset memory), /exit (quit)");
 
@@ -91,7 +90,12 @@ while (true)
         Console.WriteLine($"{Tag} Memory is ON (last 20 messages). History starts empty.");
         continue;
     }
-
+    if (command == "/memory summary")
+    {
+        memory = new SummaryMemory(chatClient, 6, 2);
+        Console.WriteLine($"{Tag} Memory is SUMMARY (old messages get summarized). History starts empty.");
+        continue;
+    }
     if (command == "/eval")
     {
         var runner = new EvalRunner(new AgentRunnerAdapter(agent), new IToolCallSource[] { docsTools, ragTools });
@@ -108,7 +112,6 @@ while (true)
         }
         continue;
     }
-
     memory.Add(new ChatMessage(ChatRole.User, input));
     Console.WriteLine($"{Tag} Sending. History messages = {memory.Count}");
     Console.Write("AI: ");
@@ -120,20 +123,29 @@ while (true)
         await foreach (var update in agent.RunStreamingAsync(memory.GetHistory()))
         {
             string piece = update.ToString();
+
+            // Color only the answer text; logs printed by the tools in between stay default.
+            Console.ForegroundColor = ConsoleColor.Green;
             Console.Write(piece);
+            Console.ResetColor();
+
             reply.Append(piece);
         }
 
         Console.WriteLine();
         memory.Add(new ChatMessage(ChatRole.Assistant, reply.ToString()));
+        await memory.CompactAsync();
         Console.WriteLine($"{Tag} Reply received. Chars = {reply.Length}");
     }
     catch (Exception ex)
     {
         // Remove the failed user message so history stays consistent.
         memory.RemoveLast();
+        Console.ResetColor();
         Console.WriteLine();
+        Console.ForegroundColor = ConsoleColor.Red;
         Console.WriteLine($"{Tag} ERROR: {ex.Message}");
         Console.WriteLine($"{Tag} Is Ollama running and is the model pulled?");
+        Console.ResetColor();
     }
 }
