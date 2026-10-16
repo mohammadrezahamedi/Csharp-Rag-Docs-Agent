@@ -1,4 +1,4 @@
-using DocsAgent.Agents;
+﻿using DocsAgent.Agents;
 using DocsAgent.Prompts;
 using DocsAgent.Rag;
 using DocsAgent.Shared;
@@ -39,8 +39,10 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 builder.Services.AddMemoryCache();
+builder.Services.AddOpenApi();
 var app = builder.Build();
 app.UseRateLimiter();
+app.MapOpenApi();
 
 // ---- Agent setup (same wiring as the console app, built once at startup) ----
 string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
@@ -151,7 +153,10 @@ app.MapPost("/plan", async (AskRequest req) =>
         Console.ResetColor();
         return Results.Problem("Planner failed.", statusCode: 500);
     }
-}).RequireRateLimiting("ask");
+}).RequireRateLimiting("ask")
+  .WithName("Plan")
+  .WithSummary("Answer a multi-step question")
+  .WithDescription("Use for questions that need several steps, for example checking a ticket status, calculating a refund and looking up the refund policy in one answer.");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
 app.MapPost("/ask", async (AskRequest req, Microsoft.Extensions.Caching.Memory.IMemoryCache cache) =>
@@ -211,7 +216,10 @@ app.MapPost("/ask", async (AskRequest req, Microsoft.Extensions.Caching.Memory.I
         Console.ResetColor();
         return Results.Problem("Agent failed.", statusCode: 500);
     }
-}).RequireRateLimiting("ask");
+}).RequireRateLimiting("ask")
+  .WithName("Ask")
+  .WithSummary("Answer a single question")
+  .WithDescription("Use for one-step questions about company documents, refunds, support hours or a single support ticket.");
 app.Run();
 
 public record AskRequest(string Question);

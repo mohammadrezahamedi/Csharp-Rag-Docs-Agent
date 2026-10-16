@@ -16,8 +16,11 @@
 
   <!-- Keep the nested src folder out of this project; it is built as its own project. -->
   <ItemGroup>
+    <Compile Remove="Samples\**" />
     <Compile Remove="src\**" />
+    <EmbeddedResource Remove="Samples\**" />
     <EmbeddedResource Remove="src\**" />
+    <None Remove="Samples\**" />
     <None Remove="src\**" />
   </ItemGroup>
 
@@ -32,10 +35,6 @@
     <ProjectReference Include="..\Vision\Vision.csproj" />
     <ProjectReference Include="..\ImageGen\ImageGen.csproj" />
  
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Samples\" />
   </ItemGroup>
 
 </Project>

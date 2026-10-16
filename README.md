@@ -1,4 +1,4 @@
-# DocsAgent
+﻿# DocsAgent
 
 A C# / .NET 9 AI-engineering portfolio: one console agent plus ten focused projects (memory, structured output, tool calling, RAG, evals, planner, multimodal, REST API, guardrails, MCP). It runs locally on Ollama and has an Azure OpenAI path for stronger models.
 
@@ -53,7 +53,7 @@ Stop any running instance of the app before building, otherwise the locked execu
 | `POLLINATIONS_API_KEY` | none | Pollinations key |
 | `POLLINATIONS_MODEL` | `flux` | Text-to-image model |
 
-Secrets can live in a git-ignored `.env.local` at the repo root (see `.env.example`). Real environment variables always win over the file, and a missing file is fine.
+Secrets can live in a git-ignored `.env.local` at the repo root (see `.env.example`). Values in the file override existing environment variables, and a missing file is fine. For Azure, use the endpoint that contains `openai.azure.com`.
 
 ## Console commands
 
@@ -94,7 +94,16 @@ Verified in the Inspector: `tools/list` works, `GetTicketStatus` for `T-1001` re
 
 `DocsAgent.Api` is a minimal API over the agent (http `5201`, https `7289` in the launch profile).
 
-<!-- TODO: list the real endpoints from DocsAgent.Api/Program.cs and confirm /health in a browser before publishing -->
+| Method | Path | Purpose |
+|--------|------|---------|
+| POST | `/ask` | One question, body `{ "question": "..." }`. Answers are cached for 5 minutes. |
+| POST | `/plan` | Multi-step planner for questions that need several tools. |
+| GET | `/health` | Liveness check. |
+| GET | `/openapi/v1.json` | OpenAPI spec. A saved copy is in `openapi/docsagent-api.json`. |
+
+Guardrails: 500 character limit, a small blocked-phrase list, and a rate limit of 5 requests per 30 seconds per IP on `/ask` and `/plan`.
+
+The spec is ready to import as a REST API tool in Microsoft Copilot Studio (not tested there yet).
 
 ## Vision
 
@@ -126,14 +135,14 @@ Development used a small local model (`llama3.2`), which is fast and free but we
 - answer prefixes such as "The final answer is:" and tool calls for plain greetings
 - vision answers that misread small details
 
-| Eval | Strong-model result |
+| Eval | Result with gpt-5-mini on Azure OpenAI |
 |------|---------------------|
-| `/eval` (RAG + agent) | _pending final run_ |
-| `/tools-eval` | _pending final run_ |
-| `/plan-eval` | _pending final run_ |
-| `/extract-eval` | _pending final run_ |
+| `/eval` (RAG + agent) | 10/10 (answerable 7/7, unanswerable 2/2, no-tool 1/1) |
+| `/tools-eval` | 5/5 |
+| `/plan-eval` |  |
+| `/extract-eval` |  |
 
-<!-- TODO: fill the table after running the evals once with a strong model (Azure OpenAI or similar) -->
+Note on the first strong-model run: `/tools-eval` scored 3/5 because the agent prompt only mentioned `SearchDocs`, so the model never called the ticket tools. The evals and the tool logs exposed it, I added the ticket tools to the prompt, and it scored 5/5. `/plan-eval` checks that a plan runs to the end, not that every answer is correct.
 
 ## Repository layout
 
@@ -146,3 +155,4 @@ Vision/               image description
 ImageGen/             image generation, tweak, remix
 samples/              small sample images
 ```
+

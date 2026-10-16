@@ -10,6 +10,12 @@ public static class ChatClientFactory
 {
     private const string Tag = "[Agents/ClientFactory]";
 
+    // Runs once before first use: loads .env.local if it exists.
+    static ChatClientFactory()
+    {
+        EnvFileLoader.Load();
+    }
+
     public static IChatClient Create()
     {
         string provider = (Environment.GetEnvironmentVariable("LLM_PROVIDER") ?? "ollama").Trim().ToLowerInvariant();

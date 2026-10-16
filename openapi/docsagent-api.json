@@ -1,0 +1,96 @@
+{
+  "openapi": "3.0.4",
+  "info": {
+    "title": "DocsAgent.Api | v1",
+    "version": "1.0.0"
+  },
+  "servers": [
+    {
+      "url": "http://localhost:5099/"
+    }
+  ],
+  "paths": {
+    "/plan": {
+      "post": {
+        "tags": [
+          "DocsAgent.Api"
+        ],
+        "summary": "Answer a multi-step question",
+        "description": "Use for questions that need several steps, for example checking a ticket status, calculating a refund and looking up the refund policy in one answer.",
+        "operationId": "Plan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/health": {
+      "get": {
+        "tags": [
+          "DocsAgent.Api"
+        ],
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    },
+    "/ask": {
+      "post": {
+        "tags": [
+          "DocsAgent.Api"
+        ],
+        "summary": "Answer a single question",
+        "description": "Use for one-step questions about company documents, refunds, support hours or a single support ticket.",
+        "operationId": "Ask",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AskRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK"
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AskRequest": {
+        "required": [
+          "question"
+        ],
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "DocsAgent.Api"
+    }
+  ]
+}
