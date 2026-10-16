@@ -109,3 +109,23 @@ The other evals are noisier. Extraction with llama3.2 gave valid JSON 80% to 100
 
 - Run the evals with a stronger model and fill in the last row of the table.
 - Expose the tools through an MCP server.
+
+
+## MCP Server (DocsAgent.Mcp)
+
+Exposes the ticket tools over the Model Context Protocol (stdio), so any MCP client can call them.
+
+Tools:
+- `GetTicketStatus(ticketId)`: returns the status of a support ticket.
+- `CalculateRefund(plan, daysSincePurchase)`: returns the refund amount in USD.
+
+Run and test with MCP Inspector:
+
+```
+npx @modelcontextprotocol/inspector dotnet run --project DocsAgent.Mcp/DocsAgent.Mcp.csproj
+```
+
+Notes:
+- Built with the official `ModelContextProtocol` C# SDK.
+- stdout is reserved for the protocol, so all logs go to stderr.
+- `McpTicketTools` is a thin adapter over the existing `TicketTools`, so there is no duplicated logic.
