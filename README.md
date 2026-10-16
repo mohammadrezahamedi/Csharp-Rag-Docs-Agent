@@ -16,7 +16,7 @@ A C# / .NET 9 AI-engineering portfolio: one console agent plus ten focused proje
 | 8 | REST API | `DocsAgent.Api` | Minimal API on top of the agent |
 | 9 | Guardrails | `DocsAgent.Api` | Implemented inside the API project |
 | 10 | MCP server | `DocsAgent.Mcp` | stdio MCP server exposing the ticket tools |
-| + | Image generation | `ImageGen` | Text-to-image, seeded tweaks, remix and edit behind provider-agnostic interfaces |
+| + | Image generation | `ImageGen` | Text-to-image, seeded tweaks and remix behind provider-agnostic interfaces |
 
 ## Design notes
 
@@ -52,7 +52,6 @@ Stop any running instance of the app before building, otherwise the locked execu
 | `AZURE_OPENAI_IMAGE_DEPLOYMENT` | none | Azure image deployment |
 | `POLLINATIONS_API_KEY` | none | Pollinations key |
 | `POLLINATIONS_MODEL` | `flux` | Text-to-image model |
-| `POLLINATIONS_EDIT_MODEL` | `kontext` | Image-edit model |
 
 Secrets can live in a git-ignored `.env.local` at the repo root (see `.env.example`). Real environment variables always win over the file, and a missing file is fine.
 
@@ -71,7 +70,6 @@ Secrets can live in a git-ignored `.env.local` at the repo root (see `.env.examp
 /imagine <prompt>
 /tweak <change>
 /remix <image path> | <optional style>
-/edit <image path> | <what to change>
 /memory on
 /memory off
 /memory summary
@@ -108,18 +106,16 @@ Verified in the Inspector: `tools/list` works, `GetTicketStatus` for `T-1001` re
 
 ## Image generation
 
-`ImageGen` keeps image providers behind interfaces (`IImageCreator`, `ISeededImageCreator`, `IImageEditor`).
+`ImageGen` keeps image providers behind interfaces (`IImageCreator`, `ISeededImageCreator`).
 
 - `/generate` makes an image from text.
 - `/imagine` + `/tweak` make a base image, then re-render it with an extra change and the same seed. This is not pixel editing: composition usually stays similar, details change.
 - `/remix` lets the vision model describe an image, then generates a new one from that description.
-- `/edit` uploads a local image to the provider's media service, edits it with an image-edit model and deletes the upload afterwards.
 
-Status: `/generate`, `/imagine`, `/tweak` and `/remix` were run end to end with Pollinations. The Azure OpenAI image provider builds but has not been run against a real deployment. `/edit` is experimental.
+Status: `/generate`, `/imagine`, `/tweak` and `/remix` were run end to end with Pollinations. The Azure OpenAI image provider builds but has not been run against a real deployment.
 
-<!-- TODO: after testing /edit, either move it into the verified list or keep it marked experimental -->
 
-Privacy: with the `pollinations` provider, prompts leave your machine. `/edit` also uploads the image (it gets a public link until deleted), so use it only with non-sensitive images.
+Privacy: with the `pollinations` provider, prompts leave your machine.
 
 ## Results and known limitations
 
@@ -147,6 +143,6 @@ DocsAgent.Api/        minimal API
 DocsAgent.Mcp/        MCP server (kept outside DocsAgent/ so its files are not compiled into the console app)
 Planner/              planner
 Vision/               image description
-ImageGen/             image generation, remix, edit
+ImageGen/             image generation, tweak, remix
 samples/              small sample images
 ```
