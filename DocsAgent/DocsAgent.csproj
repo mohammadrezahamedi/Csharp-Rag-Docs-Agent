@@ -22,6 +22,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Planner\Planner.csproj" />
     <ProjectReference Include="src\Shared\Shared.csproj" />
     <ProjectReference Include="src\Rag\Rag.csproj" />
     <ProjectReference Include="src\Tools\Tools.csproj" />

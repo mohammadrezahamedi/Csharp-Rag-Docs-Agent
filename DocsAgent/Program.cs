@@ -9,6 +9,7 @@ using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
+using Planner;
 using Structured;
 
 const string Tag = "[DocsAgent/Chat]";
@@ -45,6 +46,10 @@ tools.Add(AIFunctionFactory.Create(ticketTools.CalculateRefund));
 // Inject the real file names so the small model never has to guess them.
 string fileList = docsTools.ListDocs().Replace("\n", ", ");
 Console.WriteLine($"{Tag} Available docs at startup: {fileList}");
+// Planner: generator uses the raw chat client, steps run through the existing agent.
+var toolNames = new List<string> { "ListDocs", "SearchDocs", "GetTicketStatus", "CalculateRefund" };
+
+
 
 string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 
@@ -54,6 +59,20 @@ AIAgent agent = LocalAgentFactory.Create(chatClient, instructions, tools);
 IChatMemory memory = new SummaryMemory(chatClient, 6, 2);
 
 Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /memory on|off, /clear (reset memory), /exit (quit)");
+IPlanGenerator planGenerator = new PlanGenerator(chatClient, toolNames, 5, 3);
+IAgentRunner agentRunner = new AgentRunnerAdapter(agent);
+
+// Final-answer agent has NO tools, so "Do not call tools" is actually enforced.
+AIAgent finalAgent = LocalAgentFactory.Create(
+    chatClient,
+    "You write a final answer using only the step results you are given. Never ask for more data.",
+    new List<AITool>());
+IAgentRunner finalRunner = new AgentRunnerAdapter(finalAgent);
+
+IPlanner planner = new PlannerService(planGenerator, agentRunner, finalRunner);
+
+
+
 
 while (true)
 {
@@ -97,6 +116,19 @@ while (true)
     {
         memory = new SummaryMemory(chatClient, 6, 2);
         Console.WriteLine($"{Tag} Memory is SUMMARY (old messages get summarized). History starts empty.");
+        continue;
+    }
+    if (command == "/plan-eval")
+    {
+        Console.WriteLine($"{Tag} Running planner eval");
+        await PlannerEvalRunner.RunAsync(planner);
+        continue;
+    }
+    if (command.StartsWith("/plan "))
+    {
+        var planResult = await planner.RunAsync(input.Substring(6));
+        Console.WriteLine($"{Tag} Success={planResult.Success}");
+        Console.WriteLine(planResult.Success ? planResult.FinalAnswer : $"Error: {planResult.Error}");
         continue;
     }
     if (command == "/extract-eval")
