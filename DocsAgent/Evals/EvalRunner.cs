@@ -19,13 +19,13 @@ public sealed class EvalRunner
     };
 
     private readonly AIAgent _agent;
-    private readonly IToolCallSource _toolSource;
+    private readonly IReadOnlyList<IToolCallSource> _toolSources;
     private readonly List<string> _currentCalls = new();
 
-    public EvalRunner(AIAgent agent, IToolCallSource toolSource)
+    public EvalRunner(AIAgent agent, IReadOnlyList<IToolCallSource> toolSources)
     {
         _agent = agent;
-        _toolSource = toolSource;
+        _toolSources = toolSources;
     }
 
     public async Task RunAsync(IReadOnlyList<EvalCase> cases)
@@ -36,7 +36,10 @@ public sealed class EvalRunner
         var passes = new Dictionary<EvalKind, int>();
         int passed = 0;
 
-        _toolSource.ToolCalled += OnToolCalled;
+        foreach (IToolCallSource source in _toolSources)
+        {
+            source.ToolCalled += OnToolCalled;
+        }
 
         try
         {
@@ -54,7 +57,10 @@ public sealed class EvalRunner
         }
         finally
         {
-            _toolSource.ToolCalled -= OnToolCalled;
+            foreach (IToolCallSource source in _toolSources)
+            {
+                source.ToolCalled -= OnToolCalled;
+            }
         }
 
         Console.WriteLine();
@@ -113,14 +119,14 @@ public sealed class EvalRunner
     private bool Judge(EvalCase evalCase, string answer, out string reason)
     {
         string normalized = answer.ToLowerInvariant().Replace('\u2019', '\'');
-        bool readDocCalled = _currentCalls.Contains("ReadDoc");
+        bool readDocCalled = _currentCalls.Contains("ReadDoc") || _currentCalls.Contains("SearchDocs");
 
         switch (evalCase.Kind)
         {
             case EvalKind.Answerable:
                 if (!readDocCalled)
                 {
-                    reason = "ReadDoc was never called (model may have guessed)";
+                    reason = "no document tool was called (model may have guessed)";
                     return false;
                 }
 
@@ -152,7 +158,7 @@ public sealed class EvalRunner
             case EvalKind.NoToolNeeded:
                 if (readDocCalled)
                 {
-                    reason = "ReadDoc was called for small talk";
+                    reason = "a document tool was called for small talk";
                     return false;
                 }
 

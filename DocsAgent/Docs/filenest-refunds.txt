@@ -1,6 +1,6 @@
-CloudBox Refund Rules
+FileNest Refund Rules
 
-CloudBox is an app that stores your files online. This page explains when you can get your money back.
+FileNest is an app that stores your files online. This page explains when you can get your money back.
 
 Monthly Plans
 If you pay every month, you can ask for a refund within 7 days of the payment.
@@ -20,5 +20,5 @@ We do not refund payments made through the Apple App Store or Google Play. For t
 
 How to Ask for a Refund
 Open the app, go to Settings, then Billing, and press the Request Refund button.
-You can also write to billing@cloudbox.example and include the email address of your account.
+You can also write to billing@filenest.example and include the email address of your account.
 You do not need to explain a reason, but it helps us improve.

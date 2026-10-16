@@ -1,4 +1,4 @@
-CloudBox Frequently Asked Questions
+FileNest Frequently Asked Questions
 
 How much storage do I get?
 Free accounts get 5 GB. Pro accounts get 2 TB. Business accounts get 10 TB per user.
@@ -20,7 +20,7 @@ Pro and Business accounts can add a password to the link and set an expiry date.
 I forgot my password. What now?
 Press Forgot Password on the login screen. We send a reset link to your email, and the link works for 1 hour.
 
-Can I use CloudBox on my phone?
+Can I use FileNest on my phone?
 Yes. There are apps for iPhone and Android. Your files sync between all your devices automatically.
 
 Is my data safe?

@@ -2,11 +2,11 @@
 using DocsAgent.Agents;
 using DocsAgent.Evals;
 using DocsAgent.Prompts;
+using DocsAgent.Rag;
 using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
 using OllamaSharp;
-using DocsAgent.Rag;
 
 const string Tag = "[DocsAgent/Chat]";
 
@@ -25,10 +25,19 @@ Console.WriteLine($"{Tag} Docs folder = {docsFolder}, exists = {Directory.Exists
 
 var docsTools = new DocsTools(docsFolder);
 
+// RAG setup: chunk + embed all docs at startup.
+IEmbeddingGenerator<string, Embedding<float>> embedder =
+    new OllamaApiClient(new Uri(endpoint), "nomic-embed-text");
+var indexer = new DocsIndexer(embedder, new TextChunker(500, 100), new InMemoryVectorStore());
+await indexer.IndexFolderAsync(docsFolder);
+
+var ragTools = new RagTools(indexer, 0.5f);
+
+// The agent searches by meaning (SearchDocs) instead of reading whole files (ReadDoc).
 IList<AITool> tools = new List<AITool>
 {
     AIFunctionFactory.Create(docsTools.ListDocs),
-    AIFunctionFactory.Create(docsTools.ReadDoc)
+    AIFunctionFactory.Create(ragTools.SearchDocs)
 };
 
 // Inject the real file names so the small model never has to guess them.
@@ -39,16 +48,10 @@ string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 
 AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, instructions, tools);
 
-// RAG test setup: chunk + embed all docs at startup.
-IEmbeddingGenerator<string, Embedding<float>> embedder =
-    new OllamaApiClient(new Uri(endpoint), "nomic-embed-text");
-var indexer = new DocsIndexer(embedder, new TextChunker(500, 100), new InMemoryVectorStore());
-await indexer.IndexFolderAsync(docsFolder);
-
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();
 
-Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /clear (reset memory), /exit (quit)");
+Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /clear (reset memory), /exit (quit)");
 
 while (true)
 {
@@ -74,9 +77,10 @@ while (true)
         Console.WriteLine($"{Tag} Memory cleared.");
         continue;
     }
+
     if (command == "/eval")
     {
-        var runner = new EvalRunner(agent, docsTools);
+        var runner = new EvalRunner(agent, new IToolCallSource[] { docsTools, ragTools });
         await runner.RunAsync(EvalSuite.Default());
         continue;
     }
@@ -90,8 +94,6 @@ while (true)
         }
         continue;
     }
-
-    history.Add(new ChatMessage(ChatRole.User, input));
 
     history.Add(new ChatMessage(ChatRole.User, input));
     Console.WriteLine($"{Tag} Sending. History messages = {history.Count}");

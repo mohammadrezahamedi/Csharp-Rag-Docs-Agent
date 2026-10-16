@@ -3,7 +3,7 @@ using Microsoft.Extensions.AI;
 namespace DocsAgent.Rag;
 
 // Reads .txt files, chunks them, embeds each chunk, and stores the vectors.
-public sealed class DocsIndexer
+public sealed class DocsIndexer : IDocsSearcher
 {
     private const string Tag = "[Rag/Indexer]";
 
