@@ -43,7 +43,8 @@ Console.WriteLine($"{Tag} Available docs at startup: {fileList}");
 
 string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 
-AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, instructions, tools);
+IChatClient chatClient = ChatClientFactory.Create();
+AIAgent agent = LocalAgentFactory.Create(chatClient, instructions, tools);
 
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();

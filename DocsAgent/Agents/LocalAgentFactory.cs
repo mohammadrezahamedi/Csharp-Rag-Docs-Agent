@@ -1,6 +1,5 @@
 ﻿using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
-using OllamaSharp;
 
 namespace DocsAgent.Agents;
 
@@ -8,18 +7,13 @@ public static class LocalAgentFactory
 {
     private const string Tag = "[DocsAgent/Factory]";
 
-    // Builds an agent that talks to a local Ollama server and can call the given tools.
+    // Builds an agent on top of any IChatClient (Ollama, Azure, ...) and gives it the tools.
     public static AIAgent Create(
-        string endpoint,
-        string modelName,
+        IChatClient chatClient,
         string instructions,
         IList<AITool>? tools = null)
     {
-        Console.WriteLine($"{Tag} Creating agent. Endpoint={endpoint}, Model={modelName}, Tools={tools?.Count ?? 0}");
-
-        // OllamaApiClient implements IChatClient, so it can be wrapped by ChatClientAgent.
-        IChatClient chatClient = new OllamaApiClient(new Uri(endpoint), modelName);
-        Console.WriteLine($"{Tag} Chat client created.");
+        Console.WriteLine($"{Tag} Creating agent. Tools={tools?.Count ?? 0}");
 
         AIAgent agent = new ChatClientAgent(
             chatClient,
