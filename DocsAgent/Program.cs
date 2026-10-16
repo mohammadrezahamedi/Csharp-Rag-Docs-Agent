@@ -1,8 +1,10 @@
 ﻿using System.Text;
 using DocsAgent.Agents;
 using DocsAgent.Evals;
+using DocsAgent.Memory;
 using DocsAgent.Prompts;
 using DocsAgent.Rag;
+using DocsAgent.Shared;
 using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
@@ -13,8 +15,8 @@ const string Tag = "[DocsAgent/Chat]";
 Console.OutputEncoding = Encoding.UTF8;
 Console.InputEncoding = Encoding.UTF8;
 
+// Still used by the embedder; the chat model is chosen inside ChatClientFactory.
 string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
-string modelName = Environment.GetEnvironmentVariable("OLLAMA_MODEL_NAME") ?? "llama3.2";
 
 string docsFolder = DocsFolderLocator.Find();
 
@@ -46,10 +48,10 @@ string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 IChatClient chatClient = ChatClientFactory.Create();
 AIAgent agent = LocalAgentFactory.Create(chatClient, instructions, tools);
 
-// Conversation memory: the full history is sent on every turn.
-var history = new List<ChatMessage>();
+// Conversation memory: starts ON with a sliding window of the last 20 messages.
+IChatMemory memory = new SlidingWindowMemory(20);
 
-Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /clear (reset memory), /exit (quit)");
+Console.WriteLine($"{Tag} Ready. Commands: /eval (run quality tests), /search <text> (test retrieval), /memory on|off, /clear (reset memory), /exit (quit)");
 
 while (true)
 {
@@ -71,8 +73,22 @@ while (true)
 
     if (command == "/clear")
     {
-        history.Clear();
+        memory.Clear();
         Console.WriteLine($"{Tag} Memory cleared.");
+        continue;
+    }
+
+    if (command == "/memory off")
+    {
+        memory = new NoMemory();
+        Console.WriteLine($"{Tag} Memory is OFF. Each question is answered alone.");
+        continue;
+    }
+
+    if (command == "/memory on")
+    {
+        memory = new SlidingWindowMemory(20);
+        Console.WriteLine($"{Tag} Memory is ON (last 20 messages). History starts empty.");
         continue;
     }
 
@@ -93,15 +109,15 @@ while (true)
         continue;
     }
 
-    history.Add(new ChatMessage(ChatRole.User, input));
-    Console.WriteLine($"{Tag} Sending. History messages = {history.Count}");
+    memory.Add(new ChatMessage(ChatRole.User, input));
+    Console.WriteLine($"{Tag} Sending. History messages = {memory.Count}");
     Console.Write("AI: ");
 
     var reply = new StringBuilder();
 
     try
     {
-        await foreach (var update in agent.RunStreamingAsync(history))
+        await foreach (var update in agent.RunStreamingAsync(memory.GetHistory()))
         {
             string piece = update.ToString();
             Console.Write(piece);
@@ -109,13 +125,13 @@ while (true)
         }
 
         Console.WriteLine();
-        history.Add(new ChatMessage(ChatRole.Assistant, reply.ToString()));
+        memory.Add(new ChatMessage(ChatRole.Assistant, reply.ToString()));
         Console.WriteLine($"{Tag} Reply received. Chars = {reply.Length}");
     }
     catch (Exception ex)
     {
         // Remove the failed user message so history stays consistent.
-        history.RemoveAt(history.Count - 1);
+        memory.RemoveLast();
         Console.WriteLine();
         Console.WriteLine($"{Tag} ERROR: {ex.Message}");
         Console.WriteLine($"{Tag} Is Ollama running and is the model pulled?");

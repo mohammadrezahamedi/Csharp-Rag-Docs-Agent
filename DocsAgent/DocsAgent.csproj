@@ -26,6 +26,7 @@
     <ProjectReference Include="src\Rag\Rag.csproj" />
     <ProjectReference Include="src\Tools\Tools.csproj" />
     <ProjectReference Include="src\Evals\Evals.csproj" />
+    <ProjectReference Include="src\Memory\Memory.csproj" />
   </ItemGroup>
 
 </Project>
