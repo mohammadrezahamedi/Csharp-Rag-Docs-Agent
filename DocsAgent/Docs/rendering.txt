@@ -1,0 +1,30 @@
+Rendering Guide - Quest Performance Settings
+
+The project targets Meta Quest 3 and Quest 2 using the Universal Render Pipeline (URP).
+The target frame rate is 72 FPS on Quest 2 and 90 FPS on Quest 3.
+
+Resolution and Foveation
+The default render scale is 1.0 on Quest 3 and 0.85 on Quest 2.
+Fixed Foveated Rendering is set to High by default to save GPU time in the edges of the view.
+Dynamic resolution is disabled because it caused visible flickering in text.
+
+Lighting
+All static lights are baked using the Progressive GPU Lightmapper.
+Real-time shadows are limited to one directional light with a shadow distance of 15 meters.
+Point lights are never real-time. Use light probes for moving objects.
+The maximum number of additional real-time lights per object is 2.
+
+Draw Calls and Batching
+The draw call budget is 150 per frame on Quest 2.
+GPU instancing is enabled on all repeated props such as crates, barrels and chairs.
+Materials must share the same shader so the SRP Batcher can group them.
+Texture atlases are used for small props. The maximum texture size is 2048 pixels for characters and 1024 pixels for props.
+
+Post Processing
+Post processing is turned off on Quest 2 because of its cost.
+Only a light vignette effect is allowed on Quest 3 during comfort mode transitions.
+Bloom, depth of field and motion blur are forbidden in VR because they cause discomfort.
+
+Profiling
+Use OVR Metrics Tool to check GPU and CPU levels during a real play session.
+If the GPU level stays above 4 for more than ten seconds, reduce the render scale first.

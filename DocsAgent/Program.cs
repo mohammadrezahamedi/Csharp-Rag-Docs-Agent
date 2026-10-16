@@ -5,6 +5,8 @@ using DocsAgent.Prompts;
 using DocsAgent.Tools;
 using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using OllamaSharp;
+using DocsAgent.Rag;
 
 const string Tag = "[DocsAgent/Chat]";
 
@@ -37,6 +39,12 @@ string instructions = AgentPrompts.BuildDocsAssistant(fileList);
 
 AIAgent agent = LocalAgentFactory.Create(endpoint, modelName, instructions, tools);
 
+// RAG test setup: chunk + embed all docs at startup.
+IEmbeddingGenerator<string, Embedding<float>> embedder =
+    new OllamaApiClient(new Uri(endpoint), "nomic-embed-text");
+var indexer = new DocsIndexer(embedder, new TextChunker(500, 100), new InMemoryVectorStore());
+await indexer.IndexFolderAsync(docsFolder);
+
 // Conversation memory: the full history is sent on every turn.
 var history = new List<ChatMessage>();
 
@@ -66,13 +74,24 @@ while (true)
         Console.WriteLine($"{Tag} Memory cleared.");
         continue;
     }
-
     if (command == "/eval")
     {
         var runner = new EvalRunner(agent, docsTools);
         await runner.RunAsync(EvalSuite.Default());
         continue;
     }
+
+    if (command.StartsWith("/search "))
+    {
+        var hits = await indexer.SearchAsync(input.Substring(8), 3);
+        foreach (var hit in hits)
+        {
+            Console.WriteLine($"[RAG/Test] {hit.Score:F3} | {hit.Chunk.Source}#{hit.Chunk.Index} | {hit.Chunk.Text.Replace("\n", " ")}");
+        }
+        continue;
+    }
+
+    history.Add(new ChatMessage(ChatRole.User, input));
 
     history.Add(new ChatMessage(ChatRole.User, input));
     Console.WriteLine($"{Tag} Sending. History messages = {history.Count}");

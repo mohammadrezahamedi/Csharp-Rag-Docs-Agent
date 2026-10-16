@@ -1,0 +1,29 @@
+Save System Documentation
+
+The save system stores player progress locally and optionally syncs it to the cloud.
+
+File Format
+Save files are written as JSON and then compressed with GZip.
+The file extension is .sav and files are stored in Application.persistentDataPath.
+Each save file starts with a version number so old saves can be migrated.
+The current save version is 3.
+
+Slots
+The game supports three save slots plus one automatic slot.
+Autosave runs every 90 seconds and also when the player returns to the main menu.
+The autosave slot is overwritten each time. Manual slots are never overwritten without confirmation.
+
+What Is Saved
+Player level, coins, unlocked items, settings, and the last checkpoint name are saved.
+Temporary data such as the current enemy positions is never saved.
+Settings such as snap turn angle and comfort vignette are saved separately in settings.json.
+
+Corruption Handling
+Before writing, the system creates a backup file called slot_backup.sav.
+If loading fails because of a JSON error, the backup is loaded automatically.
+If both files are broken, a new empty save is created and a warning is logged.
+
+Cloud Sync
+Cloud sync uses the platform entitlement service and is disabled in offline mode.
+The newest file by timestamp wins when a conflict happens.
+Maximum cloud save size is 1 megabyte per slot.

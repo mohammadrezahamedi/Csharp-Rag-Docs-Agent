@@ -1,0 +1,30 @@
+Build and Release Checklist
+
+This document describes how to build the Android APK and publish it to the Meta Quest store.
+
+Build Settings
+The build target is Android with the IL2CPP scripting backend and ARM64 architecture only.
+The minimum Android API level is 29 and the target API level is 32.
+The package name is com.example.vrproject and the version code increases by one for every upload.
+Texture compression is ASTC.
+
+Before Every Release
+Run the full evaluation of the automated tests and make sure no test fails.
+Check that development build and script debugging are turned off.
+Remove all debug logs from the player build using a scripting define symbol called RELEASE.
+Verify that the app launches from a clean install within 6 seconds.
+
+Store Upload
+Upload builds using the ovr-platform-util command line tool.
+New builds are first uploaded to the ALPHA channel for internal testers.
+After one week without crashes the build is promoted to the BETA channel.
+Only after beta approval is it released to the PRODUCTION channel.
+
+Store Page Requirements
+The store page needs a cover image of 1440 by 810 pixels and a square icon of 512 pixels.
+The trailer must be at most 60 seconds and recorded in-headset.
+The age rating questionnaire must be completed before submission.
+
+Crash Reporting
+Crash reports are collected through the developer dashboard.
+The crash-free session target is 99 percent before promoting a build.
