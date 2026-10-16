@@ -16,10 +16,7 @@ Console.InputEncoding = Encoding.UTF8;
 string endpoint = Environment.GetEnvironmentVariable("OLLAMA_ENDPOINT") ?? "http://localhost:11434";
 string modelName = Environment.GetEnvironmentVariable("OLLAMA_MODEL_NAME") ?? "llama3.2";
 
-// Read the docs folder directly from the project folder (no copy step needed).
-// Optional override: set the DOCS_FOLDER environment variable.
-string docsFolder = Environment.GetEnvironmentVariable("DOCS_FOLDER")
-    ?? @"F:\CSharpProjects\Docs Agent\DocsAgent\Docs";
+string docsFolder = DocsFolderLocator.Find();
 
 Console.WriteLine($"{Tag} Docs folder = {docsFolder}, exists = {Directory.Exists(docsFolder)}");
 
@@ -31,7 +28,7 @@ IEmbeddingGenerator<string, Embedding<float>> embedder =
 var indexer = new DocsIndexer(embedder, new TextChunker(500, 100), new InMemoryVectorStore());
 await indexer.IndexFolderAsync(docsFolder);
 
-var ragTools = new RagTools(indexer, 0.5f);
+var ragTools = new RagTools(indexer, 0.55f);
 
 // The agent searches by meaning (SearchDocs) instead of reading whole files (ReadDoc).
 IList<AITool> tools = new List<AITool>
