@@ -39,7 +39,9 @@ IList<AITool> tools = new List<AITool>
     AIFunctionFactory.Create(docsTools.ListDocs),
     AIFunctionFactory.Create(ragTools.SearchDocs)
 };
-
+var ticketTools = new Tools.TicketTools(new Tools.InMemoryTicketStore());
+tools.Add(AIFunctionFactory.Create(ticketTools.GetTicketStatus));
+tools.Add(AIFunctionFactory.Create(ticketTools.CalculateRefund));
 // Inject the real file names so the small model never has to guess them.
 string fileList = docsTools.ListDocs().Replace("\n", ", ");
 Console.WriteLine($"{Tag} Available docs at startup: {fileList}");
@@ -102,6 +104,12 @@ while (true)
         Console.WriteLine($"{Tag} Running structured eval");
         IStructuredExtractor<TicketInfo> extractor = new TicketExtractor(chatClient);
         await new TicketEvalRunner(extractor).RunAsync(TicketEvalCases.All);
+        continue;
+    }
+    if (command == "/tools-eval")
+    {
+        Console.WriteLine($"{Tag} Running tools eval");
+        await ToolsEvalRunner.RunAsync(new AgentRunnerAdapter(agent));
         continue;
     }
     if (command == "/retry-test")
