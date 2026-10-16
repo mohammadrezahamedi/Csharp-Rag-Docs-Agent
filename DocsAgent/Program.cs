@@ -71,6 +71,7 @@ AIAgent finalAgent = LocalAgentFactory.Create(
     "You write a final answer using only the step results you are given. Never ask for more data.",
     new List<AITool>());
 IAgentRunner finalRunner = new AgentRunnerAdapter(finalAgent);
+IImageTweaker? tweaker = null;
 
 IPlanner planner = new PlannerService(planGenerator, agentRunner, finalRunner);
 
@@ -88,6 +89,94 @@ while (true)
     }
 
     string command = input.Trim().ToLowerInvariant();
+    if (command.StartsWith("/edit "))
+    {
+        // Format: /edit <local image path> | <what to change>
+        string[] editParts = input.Substring(6).Split('|', 2);
+        string sourceImage = editParts[0].Trim().Trim('"');
+        string instruction = editParts.Length > 1 ? editParts[1].Trim() : string.Empty;
+
+        if (string.IsNullOrWhiteSpace(instruction))
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} Usage: /edit <image path> | <what to change>");
+            Console.ResetColor();
+            continue;
+        }
+
+        try
+        {
+            IImageEditor editor = ImageEditorFactory.Create();
+            string outPath = Path.Combine(AppContext.BaseDirectory, "generated", $"edit_{DateTime.Now:HHmmss}.png");
+            string saved = await editor.EditAsync(sourceImage, instruction, outPath);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Image saved: {saved}");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} EDIT ERROR: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        continue;
+    }
+    if (command.StartsWith("/remix "))
+    {
+        // Format: /remix <source image path> | <optional style>
+        string[] parts = input.Substring(7).Split('|', 2);
+        string sourcePath = parts[0].Trim().Trim('"');
+        string style = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+
+        try
+        {
+            IImageRemixer remixer = new ImageRemixer(imageDescriber, ImageCreatorFactory.Create());
+            string outPath = Path.Combine(AppContext.BaseDirectory, "generated", $"remix_{DateTime.Now:HHmmss}.png");
+            RemixResult result = await remixer.RemixAsync(sourcePath, style, outPath);
+
+            // Green = model output (the description and the new image path).
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Description used as prompt: {result.Description}");
+            Console.WriteLine($"Image saved: {result.ImagePath}");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} REMIX ERROR: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        continue;
+    }
+    if (command.StartsWith("/imagine ") || command.StartsWith("/tweak "))
+    {
+        // /imagine makes a new base image; /tweak re-renders it with an extra change and the same seed.
+        bool isStart = command.StartsWith("/imagine ");
+        try
+        {
+            tweaker ??= new ImageTweaker(ImageCreatorFactory.CreateSeeded());
+            string outPath = Path.Combine(AppContext.BaseDirectory, "generated", $"{(isStart ? "base" : "tweak")}_{DateTime.Now:HHmmss}.png");
+            string saved = isStart
+                ? await tweaker.StartAsync(input.Substring(9).Trim(), outPath)
+                : await tweaker.TweakAsync(input.Substring(7).Trim(), outPath);
+
+            Console.ForegroundColor = ConsoleColor.Green;
+            Console.WriteLine($"Image saved: {saved}");
+            Console.ResetColor();
+        }
+        catch (Exception ex)
+        {
+            Console.ForegroundColor = ConsoleColor.Red;
+            Console.WriteLine($"{Tag} IMAGE ERROR: {ex.Message}");
+            Console.ResetColor();
+        }
+
+        continue;
+    }
+
     if (command.StartsWith("/generate "))
     {
         // Provider is chosen by IMAGE_PROVIDER; created lazily so missing variables do not break startup.

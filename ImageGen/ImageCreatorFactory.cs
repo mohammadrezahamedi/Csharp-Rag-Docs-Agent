@@ -10,8 +10,7 @@ public static class ImageCreatorFactory
     public static IImageCreator Create()
     {
         LocalEnv.Load();
-
-        string provider = (Environment.GetEnvironmentVariable("IMAGE_PROVIDER") ?? "azure").Trim().ToLowerInvariant();
+        string provider = GetProvider();
         Console.WriteLine($"{Tag} Provider = {provider}");
 
         return provider switch
@@ -22,7 +21,27 @@ public static class ImageCreatorFactory
         };
     }
 
-    private static IImageCreator CreatePollinations()
+    // Seeded creation (used by /imagine and /tweak) only exists for the HTTP provider.
+    public static ISeededImageCreator CreateSeeded()
+    {
+        LocalEnv.Load();
+        string provider = GetProvider();
+        Console.WriteLine($"{Tag} Seeded provider = {provider}");
+
+        if (provider != "pollinations")
+        {
+            throw new InvalidOperationException($"{Tag} /imagine and /tweak need IMAGE_PROVIDER=pollinations (current: {provider}).");
+        }
+
+        return CreatePollinations();
+    }
+
+    private static string GetProvider()
+    {
+        return (Environment.GetEnvironmentVariable("IMAGE_PROVIDER") ?? "azure").Trim().ToLowerInvariant();
+    }
+
+    private static HttpImageCreator CreatePollinations()
     {
         string baseUrl = Environment.GetEnvironmentVariable("POLLINATIONS_URL") ?? "https://gen.pollinations.ai";
         string model = Environment.GetEnvironmentVariable("POLLINATIONS_MODEL") ?? "flux";
@@ -32,4 +51,3 @@ public static class ImageCreatorFactory
         return new HttpImageCreator(new HttpClient { Timeout = TimeSpan.FromSeconds(120) }, baseUrl, model, key);
     }
 }
-

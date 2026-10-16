@@ -2,8 +2,8 @@
 
 namespace ImageGen;
 
-// Free-tier friendly creator: plain HTTP GET to Pollinations (gen.pollinations.ai), no SDK needed.
-public sealed class HttpImageCreator : IImageCreator
+// HTTP image creator for Pollinations (gen.pollinations.ai), with an optional fixed seed.
+public sealed class HttpImageCreator : ISeededImageCreator
 {
     private const string Tag = "[ImageGen/Http]";
     private readonly HttpClient _http;
@@ -19,10 +19,21 @@ public sealed class HttpImageCreator : IImageCreator
         _apiKey = apiKey;
     }
 
-    public async Task<string> CreateAsync(string prompt, string outputPath, CancellationToken ct = default)
+    public Task<string> CreateAsync(string prompt, string outputPath, CancellationToken ct = default)
     {
-        string url = $"{_baseUrl.TrimEnd('/')}/image/{Uri.EscapeDataString(prompt)}?model={Uri.EscapeDataString(_model)}";
-        Console.WriteLine($"{Tag} GET {url}, ApiKey={(string.IsNullOrWhiteSpace(_apiKey) ? "none" : "***")}");
+        return DownloadAsync(prompt, outputPath, null, ct);
+    }
+
+    public Task<string> CreateAsync(string prompt, string outputPath, int seed, CancellationToken ct = default)
+    {
+        return DownloadAsync(prompt, outputPath, seed, ct);
+    }
+
+    private async Task<string> DownloadAsync(string prompt, string outputPath, int? seed, CancellationToken ct)
+    {
+        string seedPart = seed.HasValue ? $"&seed={seed.Value}" : string.Empty;
+        string url = $"{_baseUrl.TrimEnd('/')}/image/{Uri.EscapeDataString(prompt)}?model={Uri.EscapeDataString(_model)}{seedPart}";
+        Console.WriteLine($"{Tag} GET {url}, Seed={(seed.HasValue ? seed.Value.ToString() : "random")}, ApiKey={(string.IsNullOrWhiteSpace(_apiKey) ? "none" : "***")}");
 
         using var request = new HttpRequestMessage(HttpMethod.Get, url);
         if (!string.IsNullOrWhiteSpace(_apiKey))
