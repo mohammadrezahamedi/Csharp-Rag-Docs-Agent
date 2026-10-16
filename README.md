@@ -1,84 +1,111 @@
 # DocsAgent
 
-A small C# console agent that answers questions about a folder of documents using **RAG** (retrieval-augmented generation), tool calling, and an automated **evaluation harness**. It runs fully local and free with [Ollama](https://ollama.com).
+I built this to learn how the pieces of an AI app fit together in C#, without using a big framework to hide them. It's a console agent that answers questions about a folder of documents, plus a small ASP.NET Core API on top of it.
 
-## What it does
+It runs locally on Ollama (llama3.2 for chat, nomic-embed-text for embeddings), so it costs nothing to run. Setting `LLM_PROVIDER=azure` switches the chat model to Azure OpenAI without code changes.
 
-1. Reads `.txt` files from the `Docs` folder.
-2. Splits them into overlapping chunks and embeds each chunk (`nomic-embed-text`).
-3. When you ask a question, the agent calls a `SearchDocs` tool that finds the closest chunks by meaning, drops weak matches (score below 0.55), and passes the rest to the chat model.
-4. If nothing relevant is found, the agent says so instead of guessing.
+## What's in it
+
+- **RAG.** The docs are split into overlapping chunks, embedded, and searched by meaning. Matches scoring below 0.55 are thrown away, and if nothing is left the agent says it doesn't know instead of guessing.
+- **Tools.** The agent can call `ListDocs`, `SearchDocs`, `GetTicketStatus` and `CalculateRefund`. A tool that fails returns an error message to the model instead of throwing. I also capped each question at 3 model/tool round trips so it can't loop forever.
+- **Structured output.** A `TicketExtractor` turns free text into a typed `TicketInfo`. If the JSON is invalid, the validation error goes back to the model and it tries again, up to 3 times. After that it fails cleanly.
+- **Memory.** Three options: none, a sliding window of the last 20 messages, and a summary memory that compresses old messages.
+- **Planner.** The model writes a JSON plan with at most 5 steps. I validate it (unknown tools are rejected, steps are renumbered) and retry if it's bad. Each step runs through the agent with the earlier results as context. The final answer comes from a second agent that has no tools at all, so it can't call one even if it wants to.
+- **Evals.** Separate runners for RAG, tool choice, extraction and the planner. There's also a fake chat client I used to prove the retry path without needing a real model to misbehave on cue.
+- **API.** `POST /ask`, `POST /plan` and `GET /health`, with rate limiting, a basic input guard, a response cache and latency logging.
 
 ```
 Docs/*.txt -> chunk -> embed -> vector store            (once, at startup)
 question -> embed -> top 3 chunks -> drop < 0.55 -> chat model -> answer
 ```
 
-## Sample data
+The sample documents are for a made-up company called FileNest (refunds, support hours, FAQ, past tickets). They're synthetic and written only for testing.
 
-The `Docs` folder contains documents for a fictional company called **FileNest** (refund rules, support hours, FAQ, past tickets). **Sample documents are synthetic, created for testing.**
+## Layout
 
-## Run it
+```
+DocsAgent/        console app: chat loop, eval commands, wiring
+DocsAgent.Api/    minimal API
+Planner/          plan generation, validation, execution
+src/Shared        interfaces (IAgentRunner, IToolCallSource, ...)
+src/Rag           chunker, vector store, indexer, SearchDocs
+src/Tools         docs tools and ticket tools
+src/Memory        none / sliding window / summary
+src/Structured    typed extraction with retry
+src/Evals         eval cases and runner
+```
 
-Requirements: .NET SDK (see the `.csproj`) and Ollama.
+Modules talk through interfaces and every module logs with a tag like `[Tools/Rag]` or `[Planner/Run]`. I wanted to be able to debug a run from the console output alone.
+
+## Running the console app
+
+You need the .NET SDK and Ollama.
 
 ```bash
 ollama pull llama3.2
 ollama pull nomic-embed-text
-dotnet run
+dotnet run --project DocsAgent
 ```
 
 Commands inside the app:
 
-| Command | What it does |
-|---|---|
-| (any question) | Full agent: search, filter, answer |
-| `/search <text>` | Retrieval only: shows the top 3 chunks and their scores (for debugging) |
-| `/eval` | Runs the automated quality tests |
-| `/clear` | Clears conversation memory |
-| `/exit` | Quit |
+```
+(any question)           full agent
+/plan <question>         multi-step planner
+/search <text>           retrieval only, shows top 3 chunks and scores
+/eval                    RAG tests
+/tools-eval              tool-choice tests
+/extract-eval            structured extraction eval
+/retry-test              retry path with a fake chat client
+/plan-eval               planner eval
+/memory on|off|summary   switch memory type
+/clear                   reset memory
+/exit                    quit
+```
 
-Optional environment variables: `OLLAMA_ENDPOINT`, `OLLAMA_MODEL_NAME`, `DOCS_FOLDER`.
+## Running the API
 
-## Evaluation
+Start Ollama, set `DOCS_FOLDER` to the full path of the `Docs` folder (it's in `Properties/launchSettings.json`), and run `DocsAgent.Api`.
 
-`/eval` runs 10 cases of three kinds:
+```bash
+curl -X POST http://localhost:5201/ask \
+  -H "Content-Type: application/json" \
+  -d '{"question":"What is the status of ticket T-1002?"}'
+```
 
-- **Answerable**: the model must call the search tool and include the required facts in its answer.
-- **Unanswerable**: the model must admit the answer is not in the documents.
-- **NoToolNeeded**: small talk must not trigger a search.
+- `/ask` has a 5 minute in-memory cache. A repeated question comes back in about 0 ms instead of a few seconds.
+- Rate limit is 5 requests per 30 seconds per IP, using the built-in ASP.NET limiter.
+- The input guard caps questions at 500 characters and blocks a short list of phrases like "ignore previous instructions". It's a first layer, not a real prompt-injection defense.
+
+Other environment variables: `OLLAMA_ENDPOINT`, `OLLAMA_MODEL_NAME`, `LLM_PROVIDER`, and for Azure `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_KEY`, `AZURE_OPENAI_DEPLOYMENT`.
+
+## Eval results
+
+`/eval` has 10 cases: 7 answerable (the model must search and include the right facts), 2 unanswerable (it must admit the answer isn't in the docs) and 1 greeting (it must not search).
 
 | Setup | Model | Score |
 |---|---|---|
 | Whole-file reading (`ReadDoc`) | llama3.2 | 5/10 |
-| RAG (`SearchDocs`, threshold 0.50) | llama3.2 | 8/10 |
-| RAG (`SearchDocs`, threshold 0.55) | llama3.2 | 9/10 |
-| RAG (`SearchDocs`) | stronger model | TODO |
+| RAG, threshold 0.50 | llama3.2 | 8/10 |
+| RAG, threshold 0.55 | llama3.2 | 9/10 |
+| RAG | stronger model | TODO |
 
-What the numbers show:
+The first version let the model pick a file from a list. It guessed wrong for some questions and then answered confidently from the wrong file. Searching by meaning fixed all the answerable cases.
 
-- The `ReadDoc` baseline had to guess a file name from a list, opened the wrong file for some questions, and answered confidently from it.
-- With RAG, all 7 answerable cases pass because the right chunk is found by meaning, not by a guessed file name.
-- The threshold was tuned on this same 10-case set, so the 9/10 is optimistic.
-- The remaining failure (`hello`) is a small-model issue: llama3.2 calls the search tool for a greeting even though the prompt says not to. Retrieval itself behaved correctly (all chunks were dropped).
+I tuned the threshold on the same 10 cases, so 9/10 is optimistic. The one failure left is the greeting: llama3.2 calls the search tool for "hello" even though the prompt tells it not to. Retrieval did its job there and dropped every chunk.
 
-## Design notes
+The other evals are noisier. Extraction with llama3.2 gave valid JSON 80% to 100% of the time and correct fields 60% to 73%, and the numbers moved between runs with identical code. For the planner, I only claim what I saw: it ran on multi-step questions, and the retry caught an invented tool name (`CompareDocs`) and produced a valid plan on the third attempt. The planner eval checks are loose keyword matches, so I'm not publishing a pass rate for it.
 
-- Modules are decoupled through interfaces (`ITextChunker`, `IVectorStore`, `IDocsSearcher`, `IToolCallSource`), so the in-memory vector store can be replaced without touching the agent.
-- Tool calls are observable through an event, which is how the eval runner checks that the right tool was used.
-- Every module logs with a tag prefix (for example `[Tools/Rag]`), so a run can be debugged from the console alone.
-- File access is restricted to the docs folder (file names only, no paths).
-- The agent is instructed that it can only explain, not perform actions such as refunds, and must say so when asked.
+## Limitations
 
-## Known limitations
+- llama3.2 ignores instructions fairly often. It calls tools for greetings, makes up ticket IDs, and sometimes sends a plan step to the wrong tool. The same question can produce different plans on different runs. I plan to rerun everything with a stronger model.
+- Chunking is character-based, so it can cut a word in half.
+- Only `.txt` files are supported. The vector store, the ticket store and the cache are all in memory.
+- The 0.55 threshold fits `nomic-embed-text` on this small corpus and would need re-tuning for other models or data.
+- The evals check that the needed facts appear in the answer. They don't judge how well the answer is written.
+- The API has no authentication.
 
-- Small local models (llama3.2) sometimes ignore instructions, for example calling a tool for a greeting. Results with a stronger model are listed above.
-- Chunking is character-based and can cut a word in the middle.
-- Only `.txt` files are supported, and the vector store is in memory.
-- The score threshold (0.55) is tuned for `nomic-embed-text` on this small corpus and should be re-tuned for other models or data.
-- The eval checks that required facts appear in the answer, not that the answer is well written. A pass means "the needed facts are present".
+## Next
 
-## Next steps
-
-- Run the eval with a stronger model and fill in the last table row.
-- Expose the agent through an ASP.NET Core API.
+- Run the evals with a stronger model and fill in the last row of the table.
+- Expose the tools through an MCP server.
