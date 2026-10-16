@@ -1,0 +1,24 @@
+CloudBox Refund Rules
+
+CloudBox is an app that stores your files online. This page explains when you can get your money back.
+
+Monthly Plans
+If you pay every month, you can ask for a refund within 7 days of the payment.
+After 7 days, we cannot refund that month, but you can cancel so you are not charged again.
+
+Yearly Plans
+If you pay once a year, you can ask for a refund within 30 days of the payment.
+After 30 days, we refund the unused months only if you had a technical problem that we could not fix.
+
+How Fast Is the Refund?
+Once we approve a refund, the money goes back to the same card you used.
+It usually arrives in 5 to 10 business days, depending on your bank.
+
+What We Do Not Refund
+We do not refund extra storage you bought as a one-time add-on if you already used more than half of it.
+We do not refund payments made through the Apple App Store or Google Play. For those, please ask Apple or Google directly.
+
+How to Ask for a Refund
+Open the app, go to Settings, then Billing, and press the Request Refund button.
+You can also write to billing@cloudbox.example and include the email address of your account.
+You do not need to explain a reason, but it helps us improve.

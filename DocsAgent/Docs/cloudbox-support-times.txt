@@ -1,0 +1,23 @@
+CloudBox Support Hours and Reply Times
+
+This page tells you when our team is available and how fast we usually answer.
+
+Support Hours
+Our support team works Monday to Friday, from 9 AM to 6 PM Eastern Time.
+We are closed on weekends and on public holidays in the United States.
+Messages sent while we are closed are answered on the next working day.
+
+How to Contact Us
+The fastest way is the chat button inside the app.
+You can also send an email to help@cloudbox.example.
+We do not offer phone support for free accounts. Only Business plan customers can call us.
+
+Reply Times
+Free accounts get a first reply within 48 hours.
+Pro accounts get a first reply within 12 hours.
+Business accounts get a first reply within 2 hours during support hours.
+
+Urgent Problems
+If you cannot open any of your files at all, mark your message as Urgent.
+Urgent messages from Pro and Business accounts are answered first.
+If the whole CloudBox service is down, check status.cloudbox.example for live updates before writing to us.

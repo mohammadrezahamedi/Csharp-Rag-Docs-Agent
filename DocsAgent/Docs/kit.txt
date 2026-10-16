@@ -1,3 +1,0 @@
-MPKit is a multiplayer kit for Unity VR games.
-It uses Photon Fusion 2 and supports up to 8 players per room.
-The default tick rate is 60.

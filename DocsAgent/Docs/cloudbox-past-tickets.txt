@@ -1,0 +1,21 @@
+CloudBox Past Support Tickets (examples of good answers)
+
+Ticket 1001
+Customer: I paid for the yearly plan three weeks ago but I do not need it anymore. Can I get my money back?
+Answer: Yes. Yearly plans can be refunded within 30 days. Please press Request Refund in Settings, Billing. The money arrives in 5 to 10 business days.
+
+Ticket 1002
+Customer: My files are not syncing between my laptop and my phone.
+Answer: First, check that both devices are connected to the internet. Then close the app and open it again. If it still does not sync, sign out and sign in again. This fixes most sync problems.
+
+Ticket 1003
+Customer: I bought the Pro plan in the iPhone app. Where do I ask for a refund?
+Answer: Payments made in the iPhone app are handled by Apple, so we cannot refund them. Please open reportaproblem.apple.com and ask Apple directly.
+
+Ticket 1004
+Customer: The upload stops at 99 percent.
+Answer: This usually happens when the file is bigger than your plan allows. Free accounts can upload up to 2 GB. Upgrading to Pro raises the limit to 50 GB.
+
+Ticket 1005
+Customer: I shared a link by mistake. How do I stop people from opening it?
+Answer: Right click the file, choose Share, and press Stop Sharing. The old link stops working immediately.
