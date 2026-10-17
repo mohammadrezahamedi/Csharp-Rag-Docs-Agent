@@ -11,25 +11,30 @@ public sealed class AgentRunnerAdapter : IAgentRunner
     private const string Tag = "[Agents/Adapter]";
 
     private readonly AIAgent _agent;
+    private readonly ITracer _tracer;
 
-    public AgentRunnerAdapter(AIAgent agent)
+    public AgentRunnerAdapter(AIAgent agent, ITracer? tracer = null)
     {
         _agent = agent;
+        _tracer = tracer ?? new NullTracer();
     }
 
     public async Task<string> AskAsync(string question)
     {
         Console.WriteLine($"{Tag} Asking with a fresh history: '{question}'");
 
-        // Fresh history per call, so eval cases never influence each other.
-        var history = new List<ChatMessage> { new ChatMessage(ChatRole.User, question) };
-        var answer = new StringBuilder();
-
-        await foreach (var update in _agent.RunStreamingAsync(history))
+        return await _tracer.MeasureAsync("agent", "ask", question, async () =>
         {
-            answer.Append(update.ToString());
-        }
+            // Fresh history per call, so eval cases never influence each other.
+            var history = new List<ChatMessage> { new ChatMessage(ChatRole.User, question) };
+            var answer = new StringBuilder();
 
-        return answer.ToString();
+            await foreach (var update in _agent.RunStreamingAsync(history))
+            {
+                answer.Append(update.ToString());
+            }
+
+            return answer.ToString();
+        });
     }
 }
